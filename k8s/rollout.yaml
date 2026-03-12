@@ -13,6 +13,7 @@ spec:
           stableIngress: azure-rag-app-shadow-ingress
       steps:
       - setMirrorRoute:
+          name: shadow-mirror
           match:
           - header:
               name: x-enable-shadow
