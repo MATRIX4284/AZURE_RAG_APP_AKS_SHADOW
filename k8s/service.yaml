@@ -1,12 +1,25 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: azure-rag-app-shadow-svc
+  name: azure-rag-app-shadow-stable
 spec:
   selector:
     app: azure-rag-app-shadow
   ports:
     - protocol: TCP
       port: 80
-      targetPort: 8000 # Placeholder if a web server is added
+      targetPort: 8000
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: azure-rag-app-shadow-canary
+spec:
+  selector:
+    app: azure-rag-app-shadow
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000
   type: ClusterIP

@@ -11,6 +11,8 @@ spec:
       trafficRouting:
         nginx:
           stableIngress: azure-rag-app-shadow-ingress
+      stableService: azure-rag-app-shadow-stable
+      canaryService: azure-rag-app-shadow-canary
       steps:
       - setMirrorRoute:
           name: shadow-mirror
