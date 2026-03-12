@@ -1,0 +1,16 @@
+
+az account set --subscription ed30c0d8-b03a-454d-96a8-6fe54400a879
+
+az aks get-credentials --resource-group <rg-name> --name Kaustav-Kubernetes-Cluster
+
+
+
+az aks show \
+--resource-group kaustav_rg \
+--name Kaustav-Kubernetes-Cluster \
+--query nodeResourceGroup
+
+
+az network vnet list \
+--resource-group MC_kaustav_rg_Kaustav-Kubernetes-Cluster_centralus \
+--output table

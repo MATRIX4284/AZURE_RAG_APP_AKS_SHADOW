@@ -1,0 +1,36 @@
+Continous Deployment to Container Apps:
+
+Create CONTAINER APPS ENVIRONMENT:
+
+az containerapp env create \
+  --name azure-rag-app-env \
+  --resource-group kaustav_rg \
+  --location canadacentral
+
+az containerapp env list --resource-group kaustav_rg
+
+Use this environment azure-rag-app-env in the GitHub Actions workflow file python-app.yml
+for the the lines
+
+- name: Deploy to Azure Container Apps
+      uses: azure/container-apps-deploy@v1
+      with:
+        registry-login-server: ${{ secrets.AZURE_CONTAINER_REGISTRY_LOGIN_SERVER }}
+        registry-username: ${{ secrets.AZURE_CONTAINER_REGISTRY_USERNAME }}
+        registry-password: ${{ secrets.AZURE_CONTAINER_REGISTRY_PASSWORD }}
+        container-name: azure-rag-app
+        image: kaustavcontainerregistry.azurecr.io/azure-rag-app:latest
+        resource-group: ${{ secrets.AZURE_RESOURCE_GROUP }}
+        environment: ${{ secrets.AZURE_CONTAINER_APPS_ENVIRONMENT }}
+        image-pull-secret: acr-secret
+
+
+Create Azure Service Principal for GitHub Actions:
+
+az ad sp create-for-rbac --name "my-rag-app-sp" --role contributor \
+  --scopes /subscriptions/ed30c0d8-b03a-454d-96a8-6fe54400a879/resourceGroups/kaustav_rg \
+  --json-auth
+
+Get the JSON output from the above command and add it to the GitHub Secrets as AZURE_CREDENTIALS.
+
+After that push the changes to the GitHub repository.

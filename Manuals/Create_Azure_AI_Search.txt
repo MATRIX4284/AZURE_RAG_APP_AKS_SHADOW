@@ -1,0 +1,28 @@
+1. Search for Azure AI Search
+
+2. In order to access AI Serach using service principal
+
+Go to Settings --> Keys 
+
+Set API Access control to Both
+
+3.Give the required roles:
+
+Go to AI Search --> Access Control (IAM)
+
+Add Role Assignment:
+
+Search Index Data Contributor
+
+to:
+
+User, group, or service principal
+
+
+4. Go to Overview and get the Url
+
+This is the AI search server endpoint or URL.
+
+
+
+

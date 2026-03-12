@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: azure-rag-app-shadow
+  namespace: argocd-shadow
+  annotations:
+    argocd-image-updater.argoproj.io/image-list: myimage=kaustavcontainerregistry.azurecr.io/azure-rag-app-shadow:latest
+    argocd-image-updater.argoproj.io/myimage.update-strategy: latest
+    argocd-image-updater.argoproj.io/myimage.allow-tags: |
+      regexp:^[0-9a-f]{40}$
+    # This prevents the race condition by telling Image Updater to update Git only when image exists
+    argocd-image-updater.argoproj.io/write-back-method: git
+    # This points to the secret we created for ACR access
+    #argocd-image-updater.argoproj.io/myimage.pull-secret: secret:argocd/acr-registry-secret#token
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/MATRIX4284/AZURE_RAG_APP_AKS_SHADOW.git # Update with your actual repo URL
+    targetRevision: main
+    path: k8s
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

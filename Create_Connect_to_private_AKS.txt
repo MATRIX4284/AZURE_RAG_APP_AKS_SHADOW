@@ -1,0 +1,165 @@
+
+
+Create an azure VM in the same network of Kubernetes Server
+
+Get the key file
+
+Move the key file to ssh
+mv ~/Downloads/myKey.pem ~/.ssh/
+
+
+Go to Native SSH
+
+Create Inbound rule and add port 22 .
+
+Connect to VM from laptop
+
+ssh -i ~/.ssh/kaustav-vm_key.pem azureuser@20.46.229.91
+
+Install azcli
+
+curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+
+Install All required packages
+
+sudo apt-get update
+sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
+sudo az aks install-cli
+
+
+
+az account set --subscription ed30c0d8-b03a-454d-96a8-6fe54400a879
+
+az aks get-credentials --resource-group <rg-name> --name Kaustav-Kubernetes-Cluster
+
+
+
+az aks show --resource-group kaustav_rg --name Kaustav-Kubernetes-Cluster --query nodeResourceGroup
+
+
+az network vnet list --resource-group MC_kaustav_rg_Kaustav-Kubernetes-Cluster_centralus --output table
+
+
+Go to Azure VM --> Connect --> Click on Connect
+
+Go to Native SSH
+
+Create Inbound rule and add port 22 .
+
+
+Connect to VM from laptop
+
+ssh -i ~/.ssh/kaustav-vm_key.pem azureuser@20.46.229.91
+
+
+Connect to Azure VM from Filezilla:
+
+
+Steps to Connect via SFTP (Recommended)
+Get VM Details: In the Azure Portal, locate your Virtual Machine to find its Public IP address.
+Open FileZilla: Open the FileZilla Client, go to File > Site Manager .
+Configure Site:
+Protocol: Select SFTP - SSH File Transfer Protocol.
+Host: Enter your Azure VM public IP address.
+Port: Enter 22(default SSH port).
+Logon Type: Select Key file.
+User: Enter your VM username.
+Key file: Browse and select the .pemor .ppkprivate key file used to create the VM.
+Connect: Click Connect . If asked to trust the host key, check "Always trust" and click OK. 
+
+
+kubectl get po
+
+
+Create Secrets in Azure:
+
+kubectl delete secret azure-rag-secrets
+
+kubectl create secret generic azure-rag-secrets \
+  --from-literal=AZURE_STORAGE_CONNECTION_STRING= AZURE_STORAGE_CONNECTION_STRING \
+  --from-literal=AZURE_OPENAI_ENDPOINT="https://kaustav-azure-foundry.services.ai.azure.com/" \
+  --from-literal=AZURE_OPENAI_API_VERSION="2024-02-01" \
+  --from-literal=AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME="text-embedding-3-large" \
+  --from-literal=AZURE_AI_SEARCH_ENDPOINT="https://kaustav-ai-search.search.windows.net" \
+  --from-literal=AZURE_AI_SEARCH_INDEX_NAME="kaustav-index-test-6" \
+  --from-literal=AZURE_CLIENT_ID=XXXX \
+  --from-literal=AZURE_CLIENT_SECRET=XXXX \
+  --from-literal=AZURE_TENANT_ID=XXXX
+
+Delete Rollouts and associated pods:
+
+kubectl delete rollout azure-rag-app
+kubectl delete rs -l app=azure-rag-app
+
+Create Argo Rollouts:
+
+kubectl create namespace argo-rollouts
+kubectl apply -n argo-rollouts -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml
+
+
+Create ArgoCD Image Updater:
+
+kubectl create namespace argocd-shadow
+
+This is ARGOCD updater that takes directly from github chnage after push
+
+
+
+kubectl apply -n argocd-shadow -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+kubectl apply --server-side --force-conflicts -n argocd-shadow -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+
+This is ARGOCD Image Updater that picks up chnages after the image in pushed to docker repo:
+
+kubectl apply -n argocd-shadow -f https://raw.githubusercontent.com/argoproj-labs/argocd-image-updater/stable/config/install.yaml
+
+Stable version of Image Updaterthat does not need CRDs:
+
+kubectl apply -n argocd-shadow -f https://raw.githubusercontent.com/argoproj-labs/argocd-image-updater/v0.12.2/manifests/install.yaml
+
+
+
+kubectl get pods -n argocd-shadow
+
+Create Image Updater Secrets:
+
+kubectl create secret generic acr-registry-secret -n argocd-shadow \
+  --from-literal=token=<ACR_USERNAME>:<ACR_PASSWORD>
+
+Apply the Image Updater:
+
+kubectl delete -f application.yaml
+kubectl apply -f application.yaml
+
+Verify If the application is running:
+
+kubectl describe application azure-rag-app-shadow -n argocd-shadow
+
+Watch the Rollout:
+
+kubectl argo rollouts get rollout azure-rag-app-shadow --watch
+
+
+
+
+
+
+In Case doing from private github:
+
+# 1. Create the secret with your credentials
+
+# Replace <GITHUB_USERNAME> and <GITHUB_TOKEN> with your actual details
+
+kubectl delete secret repo-creds -n argocd
+
+kubectl create secret generic repo-creds -n argocd \
+  --from-literal=url=https://github.com/kaustav4284/AZURE_RAG_APP_AKS.git \
+  --from-literal=password=<GITHUB_TOKEN> \
+  --from-literal=username=<GITHUB_USERNAME>
+
+
+# 2. Label it so Argo CD knows it's for repository access
+
+kubectl label secret repo-creds -n argocd "argocd.argoproj.io/secret-type=repository"
+
