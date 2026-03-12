@@ -2,31 +2,12 @@ apiVersion: argoproj.io/v1alpha1
 kind: Rollout
 metadata:
   name: azure-rag-app-shadow
-  labels:
-    app: azure-rag-app-shadow
 spec:
   replicas: 2
-  strategy:
-    canary:
-      trafficRouting:
-        istio:
-          virtualService:
-            name: azure-rag-app-shadow-vsvc
-            routes:
-            - primary
-      stableService: azure-rag-app-shadow-stable
-      canaryService: azure-rag-app-shadow-canary
-      steps:
-      - setMirrorRoute:
-          name: shadow-mirror
-          match:
-          - headers:
-              x-enable-shadow:
-                exact: "true"
-      - pause: {}
   selector:
     matchLabels:
       app: azure-rag-app-shadow
+
   template:
     metadata:
       labels:
@@ -35,56 +16,31 @@ spec:
       containers:
       - name: azure-rag-app-shadow
         image: kaustavcontainerregistry.azurecr.io/azure-rag-app-shadow:latest
-        env:
-        - name: AZURE_STORAGE_CONNECTION_STRING
-          valueFrom:
-            secretKeyRef:
-              name: azure-rag-secrets
-              key: AZURE_STORAGE_CONNECTION_STRING
-        - name: AZURE_OPENAI_ENDPOINT
-          valueFrom:
-            secretKeyRef:
-              name: azure-rag-secrets
-              key: AZURE_OPENAI_ENDPOINT
-        - name: AZURE_OPENAI_API_VERSION
-          valueFrom:
-            secretKeyRef:
-              name: azure-rag-secrets
-              key: AZURE_OPENAI_API_VERSION
-        - name: AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME
-          valueFrom:
-            secretKeyRef:
-              name: azure-rag-secrets
-              key: AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME
-        - name: AZURE_AI_SEARCH_ENDPOINT
-          valueFrom:
-            secretKeyRef:
-              name: azure-rag-secrets
-              key: AZURE_AI_SEARCH_ENDPOINT
-        - name: AZURE_AI_SEARCH_INDEX_NAME
-          valueFrom:
-            secretKeyRef:
-              name: azure-rag-secrets
-              key: AZURE_AI_SEARCH_INDEX_NAME
-        - name: AZURE_CLIENT_ID
-          valueFrom:
-            secretKeyRef:
-              name: azure-rag-secrets
-              key: AZURE_CLIENT_ID
-        - name: AZURE_CLIENT_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: azure-rag-secrets
-              key: AZURE_CLIENT_SECRET
-        - name: AZURE_TENANT_ID
-          valueFrom:
-            secretKeyRef:
-              name: azure-rag-secrets
-              key: AZURE_TENANT_ID
         resources:
           requests:
-            cpu: "500m"
-            memory: "1Gi"
+            cpu: 500m
+            memory: 1Gi
           limits:
-            cpu: "4000m"
-            memory: "4Gi"
+            cpu: 4
+            memory: 4Gi
+
+  strategy:
+    canary:
+      stableService: azure-rag-app-shadow-stable
+      canaryService: azure-rag-app-shadow-canary
+
+      trafficRouting:
+        istio:
+          virtualService:
+            name: azure-rag-app-shadow-vsvc
+            routes:
+            - primary
+
+      steps:
+      - setMirrorRoute:
+          name: shadow-mirror
+          match:
+          - headers:
+              x-enable-shadow:
+                exact: "true"
+      - pause: {}
