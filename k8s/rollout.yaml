@@ -9,10 +9,11 @@ spec:
   strategy:
     canary:
       trafficRouting:
-        nginx:
-          stableIngress: azure-rag-app-shadow-ingress
-      stableService: azure-rag-app-shadow-stable
-      canaryService: azure-rag-app-shadow-canary
+        istio:
+          virtualService:
+            name: azure-rag-app-shadow-vsvc
+            routes:
+            - primary
       steps:
       - setMirrorRoute:
           name: shadow-mirror
