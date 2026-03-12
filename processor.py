@@ -52,6 +52,8 @@ def get_embeddings_client():
         DefaultAzureCredential(), "https://ai.azure.com/.default"
     )
     
+    from langchain_openai import AzureOpenAIEmbeddings
+    
     return AzureOpenAIEmbeddings(
         azure_deployment=os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME", "text-embedding-3-large"),
         openai_api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01"),
@@ -121,6 +123,8 @@ def pdf_markdown_parser(pdf_bytes: bytes, filename: str = "document.pdf"):
     Parses a PDF byte stream and returns markdown content using Docling.
     """
     try:
+        from docling.datamodel.base_models import DocumentStream
+        from docling.document_converter import DocumentConverter
         # Convert bytes to DocumentStream using keyword arguments
         doc_stream = DocumentStream(name=filename, stream=io.BytesIO(pdf_bytes))
         
@@ -141,6 +145,12 @@ async def process_pdf_to_faiss(blob_url: str, tender_name: str = "test"):
     try:
         # Define the schema explicitly so LangChain knows how to map metadata
         # Consolidate this definition to ensure consistency across the function
+        from azure.search.documents.indexes.models import (
+            SearchField,
+            SearchFieldDataType,
+            SimpleField,
+            SearchableField,
+        )
         fields = [
             SimpleField(name="id", type=SearchFieldDataType.String, key=True, filterable=True),
             SearchableField(name="content", type=SearchFieldDataType.String, analyzer_name="en.microsoft"),
@@ -163,6 +173,7 @@ async def process_pdf_to_faiss(blob_url: str, tender_name: str = "test"):
         search_key = os.getenv("AZURE_AI_SEARCH_KEY")
         
         # We need a temporary vector store instance to check for existence
+        from langchain_community.vectorstores import AzureSearch
         temp_vector_store = AzureSearch(
             azure_search_endpoint=AZURE_AI_SEARCH_ENDPOINT,
             azure_search_key=search_key if search_key else None,
@@ -233,67 +244,69 @@ async def process_pdf_to_faiss(blob_url: str, tender_name: str = "test"):
                 if header != b"%PDF":
                     print("WARNING: File does not start with %PDF. It might not be a valid PDF.")
 
-            # 2. Parse with Docling (using to_thread since it's CPU-bound)
-            print("Parsing PDF with Docling (converting to Markdown)...")
-            
-            # Configure advanced PDF pipeline options
-            pipeline_options = PdfPipelineOptions()
-            pipeline_options.do_ocr = True
-            pipeline_options.do_table_structure = True
-            pipeline_options.table_structure_options.do_cell_matching = True
-            pipeline_options.table_structure_options.mode = TableFormerMode.ACCURATE 
-            
-            converter = DocumentConverter(
-                format_options={
-                    InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
-                }
-            )
-            result = await asyncio.to_thread(converter.convert, str(local_path))
-            markdown_content = result.document.export_to_markdown()
+        # 2. Parse with Docling (using to_thread since it's CPU-bound)
+        print("Parsing PDF with Docling (converting to Markdown)...")
+        
+        from docling.document_converter import DocumentConverter, PdfFormatOption
+        from docling.datamodel.base_models import InputFormat
+        from docling.datamodel.pipeline_options import PdfPipelineOptions, TableFormerMode
 
-            print("Markdown Content")
-            print(type(markdown_content))
+        # Configure advanced PDF pipeline options
+        pipeline_options = PdfPipelineOptions()
+        pipeline_options.do_ocr = True
+        pipeline_options.do_table_structure = True
+        pipeline_options.table_structure_options.do_cell_matching = True
+        pipeline_options.table_structure_options.mode = TableFormerMode.ACCURATE 
+        
+        converter = DocumentConverter(
+            format_options={
+                InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
+            }
+        )
+        result = await asyncio.to_thread(converter.convert, str(local_path))
+        markdown_content = result.document.export_to_markdown()
 
-            # 3. Chunk with LangChain (Markdown Header Splitting)
-            print("Chunking document with MarkdownHeaderTextSplitter...")
-            headers_to_split_on = [
+        print("Markdown Content")
+        print(type(markdown_content))
+
+        # 3. Chunk with LangChain (Markdown Header Splitting)
+        print("Chunking document with MarkdownHeaderTextSplitter...")
+        from langchain_text_splitters import MarkdownHeaderTextSplitter
+        headers_to_split_on = [
             ("#", "Header 1"),
             ("##", "Header 2"),
             ("###", "Header 3"),
-            ]
-            markdown_splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
-            chunks = markdown_splitter.split_text(markdown_content)
-        
-            # Add metadata (source URL and tender_name) to each chunk
-            for chunk in chunks:
-                chunk.metadata["source"] = blob_url
-                chunk.metadata["tender_name"] = tender_name
-        
-            print(f"Created {len(chunks)} chunks.")
+        ]
+        markdown_splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
+        chunks = markdown_splitter.split_text(markdown_content)
+    
+        # Add metadata (source URL and tender_name) to each chunk
+        for chunk in chunks:
+            chunk.metadata["source"] = blob_url
+            chunk.metadata["tender_name"] = tender_name
+    
+        print(f"Created {len(chunks)} chunks.")
 
-            # 4. Initialize Embeddings and Vector Store
-            embeddings = get_embeddings_client()
-            
-            print(f"Updating Azure AI Search index: {AZURE_AI_SEARCH_INDEX_NAME}...")
+        # 4. Initialize Embeddings and Vector Store
+        embeddings = get_embeddings_client()
         
-            # AzureSearch handles index creation and connection internally
-            # It supports DefaultAzureCredential if the key is None
-            search_key = os.getenv("AZURE_AI_SEARCH_KEY")
-        
-            vector_store: AzureSearch = AzureSearch(
-                azure_search_endpoint=AZURE_AI_SEARCH_ENDPOINT,
-                azure_search_key=search_key if search_key else None,
-                azure_credential=DefaultAzureCredential() if not search_key else None,
-                index_name=AZURE_AI_SEARCH_INDEX_NAME,
-                embedding_function=embeddings.embed_query,
-                fields=fields,
-                # Explicitly map fields to match recreate_index.py
+        print(f"Updating Azure AI Search index: {AZURE_AI_SEARCH_INDEX_NAME}...")
+    
+        # AzureSearch handles index creation and connection internally
+        # It supports DefaultAzureCredential if the key is None
+        search_key = os.getenv("AZURE_AI_SEARCH_KEY")
+        from langchain_community.vectorstores import AzureSearch
+        vector_store: AzureSearch = AzureSearch(
+            azure_search_endpoint=AZURE_AI_SEARCH_ENDPOINT,
+            azure_search_key=search_key if search_key else None,
+            azure_credential=DefaultAzureCredential() if not search_key else None,
+            index_name=AZURE_AI_SEARCH_INDEX_NAME,
+            embedding_function=embeddings.embed_query,
+            fields=fields,
+            # Explicitly map fields to match recreate_index.py
             additional_search_client_options={"retry_total": 3},
             index_management_client_options={"retry_total": 3},
         )
-
-
-        #await vector_store.aadd_documents(documents=chunks)
 
         # --- Optimized Parallel Ingestion ---
         batch_size = 10      # Smaller batches = lighter network calls

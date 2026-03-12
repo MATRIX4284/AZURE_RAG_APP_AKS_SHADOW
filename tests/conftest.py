@@ -1,6 +1,6 @@
 import pytest
 import os
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, AsyncMock
 
 @pytest.fixture
 def mock_env_vars(monkeypatch):
@@ -19,8 +19,12 @@ def mock_embeddings(mocker):
 
 @pytest.fixture
 def mock_azure_search(mocker):
-    return mocker.patch("processor.AzureSearch")
+    return mocker.patch("langchain_community.vectorstores.AzureSearch")
 
 @pytest.fixture
 def mock_document_converter(mocker):
-    return mocker.patch("processor.DocumentConverter")
+    return mocker.patch("docling.document_converter.DocumentConverter")
+
+@pytest.fixture(autouse=True)
+def mock_default_azure_credential(mocker):
+    return mocker.patch("processor.DefaultAzureCredential")
