@@ -4,7 +4,7 @@ metadata:
   name: azure-rag-app-shadow-vsvc
 spec:
   hosts:
-  - "*"
+  - azure-rag-app-shadow-stable
   http:
   - name: primary
     route:

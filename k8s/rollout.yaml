@@ -18,9 +18,9 @@ spec:
       - setMirrorRoute:
           name: shadow-mirror
           match:
-          - header:
-              name: x-enable-shadow
-              exact: "true"
+          - headers:
+              x-enable-shadow:
+                exact: "true"
       - pause: {}
   selector:
     matchLabels:
