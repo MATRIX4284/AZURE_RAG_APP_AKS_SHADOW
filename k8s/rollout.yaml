@@ -14,6 +14,8 @@ spec:
             name: azure-rag-app-shadow-vsvc
             routes:
             - primary
+      stableService: azure-rag-app-shadow-stable
+      canaryService: azure-rag-app-shadow-canary
       steps:
       - setMirrorRoute:
           name: shadow-mirror
