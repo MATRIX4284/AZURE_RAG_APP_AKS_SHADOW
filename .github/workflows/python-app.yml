@@ -57,7 +57,7 @@ jobs:
 
     - name: Push Docker Image
       run: |
-        docker push kaustavcontainerregistry.azurecr.io/azure-rag-app:${{ github.sha }}
+        docker push kaustavcontainerregistry.azurecr.io/azure-rag-app-shadow:${{ github.sha }}
 
 # ###########################################Deployment (Handled by Argo CD)#####################################################################    
 
