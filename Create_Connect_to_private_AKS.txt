@@ -165,3 +165,19 @@ kubectl create secret generic repo-creds -n argocd \
 
 kubectl label secret repo-creds -n argocd "argocd.argoproj.io/secret-type=repository"
 
+
+
+Install Istioctl:
+
+curl -L https://istio.io/downloadIstio | sh -
+# 2. Extract and move to the Istio directory (it will be created by the sh script)
+# The version might vary, for example: cd istio-1.21.0
+cd istio-*
+# 3. Add istioctl to your path
+export PATH=$PWD/bin:$PATH
+# 4. Verify installation
+istioctl version --remote=false
+
+Install Instio:
+
+istioctl install
